@@ -76,11 +76,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Bahaviour_tree.cpp" />
+    <ClCompile Include="button.cpp" />
+    <ClCompile Include="Shader_Class.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bahaviour_tree.h" />
     <ClInclude Include="Agent.h" />
     <ClInclude Include="Behaviour.h" />
+    <ClInclude Include="Button.h" />
+    <ClInclude Include="Shader_Class.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

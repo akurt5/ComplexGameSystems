@@ -64,6 +64,22 @@ struct Compare
 
 	void BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, glm::vec3 _StartPos, glm::vec3 _EndPos);
 
+	void GiveSore(std::vector<NavNode*> a_Graph, glm::vec3 _Target)
+	{
+		for (int i=0;i<a_Graph.size();++i)
+		{
+			a_Graph[i]->Score = (glm::length(_Target) - glm::length(a_Graph[i]->Position));
+		
+			if(a_Graph[i]->Score < 0)
+			{
+				a_Graph[i]->Score *= -1;
+			}
+		}
+		std::vector<NavNode*> Temp;
+		Temp = a_Graph;
+		std::sort(Temp.begin(), Temp.end(), Compare());
+	}
+
 
 	void	createOpenGLBuffers(FBXFile* a_fbx);
 	void	cleanupOpenGLBuffers(FBXFile* a_fbx);

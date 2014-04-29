@@ -4,8 +4,11 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/ext.hpp>
+#include "Button.h"
 
 #include "Agent.h"
+
+
 
 class WithinRange : public Behaviour
 {
@@ -94,7 +97,7 @@ public:
 				if(tLen > Len){Len = tLen;TargetEnemy = EnemyCurrent;}
 			}
 			Pos = _Agent->GetPos();
-			Dir = glm::normalize(TargetEnemy->GetPos() - Pos + (TargetEnemy->Velocity * TargetEnemy->Velocity));
+			Dir = glm::normalize(TargetEnemy->GetPos() - Pos + TargetEnemy->Velocity);
 		}
 		else
 		{
@@ -104,6 +107,37 @@ public:
 		_Agent->Velocity +=(Dir * Speed* Utility::getDeltaTime());
 		
 		return true;
+	}
+	float Speed;
+};
+
+class FleeTarget : public Behaviour
+{
+public:
+	FleeTarget(float _Speed) : Speed(_Speed){}
+	virtual ~FleeTarget(){}
+
+	virtual bool  Execute(Agent *_Agent)
+	{
+		glm::vec3 Pos, Dir;
+		Agent *TargetEnemy;
+		float Len = 0, tLen;
+		for ( auto EnemyCurrent : _Agent->Enemies)
+			{
+				tLen = glm::length(_Agent->GetPos()) - glm::length(EnemyCurrent->GetPos());
+				if(tLen < 0){tLen *= -1;}
+				if(tLen > Len){Len = tLen;TargetEnemy = EnemyCurrent;}
+			}
+		if(Len < 2.5)
+		{
+		Pos = _Agent->GetPos();
+		Dir = glm::normalize(TargetEnemy->GetPos() - Pos);
+		_Agent->Velocity -=(Dir * Speed* Utility::getDeltaTime());
+		
+		return true;
+		}
+		else 
+			return false;
 	}
 	float Speed;
 };
@@ -133,12 +167,13 @@ bool Bahaviour_tree::onCreate(int a_argc, char* a_argv[])
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-	
-
+	Screen = new ShaderHandle();
+	Screen->Load(2, "Screen.vert", "Screen.frag");
 
 	Behaviour* Seek = new SeekTarget(3);
 	Behaviour* Rand = new RandomiseTarget(10);
 	Behaviour* Within = new WithinRange(0.5f);
+	Behaviour* Flee = new FleeTarget(0.5f);
 
 	//																			IF	not within range	THEN	seek	ELSE	randomise target
 	//																			IF	not attack			THEN	Above
@@ -147,24 +182,41 @@ bool Bahaviour_tree::onCreate(int a_argc, char* a_argv[])
 	Seq->addchild(Within);
 	Seq->addchild(Rand);
 
+	Sequence* Seq2 = new Sequence();
+	Seq2->addchild(Flee);
+	Seq2->addchild(Seek);
 	Selector* Root = new Selector();
 	Root->addchild(Seq);
-	Root->addchild(Seek);
+	Root->addchild(Seq2);
 	
 	Agenda = Root;
 
 	RedSize = 3;
 	BlueSize = 3;
 
-	Red->SetFlagColour(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-	Blue->SetFlagColour(glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+	//glm::vec4 CRed = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	//glm::vec4 CBlue = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+
+	//Red->SetFlagColour(CRed);
+	//Blue->SetFlagColour(CBlue);
 
 
 	Red = new Team();
-	Red->SetFlagPos(glm::vec3(0, 0, 10));
+	//Red->SetFlagPos(glm::vec3(0, 0, 10));
 	Blue = new Team();
-	Blue->SetFlagPos(glm::vec3(0, 0, -10));
+	//Blue->SetFlagPos(glm::vec3(0, 0, -10));
 
+	int FlagCount = 3;
+	for (int i=0;i<FlagCount;i++)
+	{
+		Flags.emplace_back(new Flag());
+
+		//Flags[i]->Position.x = rand()%9;
+		//Flags[i]->Position.z = rand()%9;
+	}
+	Flags[0]->Position = glm::vec3(9, 0, 9);
+	Flags[1]->Position = glm::vec3(0, 0, 0);
+	Flags[2]->Position = glm::vec3(-9, 0, -9);
 
 	for (int i=0;i<RedSize;++i)
 	{
@@ -172,11 +224,8 @@ bool Bahaviour_tree::onCreate(int a_argc, char* a_argv[])
 		glm::vec3 NewPos;
 		NewPos.xz = glm::circularRand(10.0f);
 		Red->Members[i]->SetPos(NewPos);
-		Red->Members[i]->SetTarget(Blue->Flag);
 		
-		Red->Members[i]->SetBehaviour(Agenda);
-		
-		
+				
 	}
 	for (int i=0;i<BlueSize;++i)
 	{
@@ -184,16 +233,22 @@ bool Bahaviour_tree::onCreate(int a_argc, char* a_argv[])
 		glm::vec3 NewPos;
 		NewPos.xz = glm::circularRand(10.0f);
 		Blue->Members[i]->SetPos(NewPos);
-		Blue->Members[i]->SetTarget(Red->Flag);
+		Blue->Members[i]->SetTarget(Flags[0]->GetPos());
 
-		Blue->Members[i]->SetBehaviour(Agenda);
-		Blue->Members[i]->CalcEnemy(Red->Members);
 		
-
+		
 	}
 	for(int i=0;i<RedSize;++i)
 	{
+		Red->Members[i]->SetTarget(Flags[0]->GetPos());
 		Red->Members[i]->CalcEnemy(Blue->Members);
+		Red->Members[i]->SetBehaviour(Agenda);
+		
+	}
+	for (int i=0;i<BlueSize;++i)
+	{
+		Blue->Members[i]->SetBehaviour(Agenda);
+		Blue->Members[i]->CalcEnemy(Red->Members);
 	}
 
 	return true;
@@ -253,11 +308,10 @@ void Bahaviour_tree::onUpdate(float a_deltaTime)
 
 	}
 
-	Gizmos::addAABBFilled(Red->Flag, glm::vec3(0.1f), glm::vec4(1, 0, 0, 1));
-
-	Gizmos::addAABBFilled(Blue->Flag, glm::vec3(0.1f), glm::vec4(0, 0, 1, 1));
-
-
+	for (auto i : Flags)
+	{
+		i->Update();
+	}
 	// quit our application when escape is pressed
 	if (glfwGetKey(m_window,GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		quit();
@@ -273,6 +327,7 @@ void Bahaviour_tree::onDraw()
 	
 	// draw the gizmos from this frame
 	Gizmos::draw(viewMatrix, m_projectionMatrix);
+
 }
 
 void Bahaviour_tree::onDestroy()

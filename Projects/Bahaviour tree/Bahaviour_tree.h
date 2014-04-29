@@ -4,10 +4,13 @@
 #include "Application.h"
 #include <glm/glm.hpp>
 #include <vector>
+#include "button.h"
+#include "Shader_Class.h"
 
 class Agent;
 class Team;
 class Behaviour;
+class Flag;
 
 // Derived application class that wraps up all globals neatly
 class Bahaviour_tree : public Application
@@ -27,7 +30,12 @@ public:
 	glm::mat4	m_cameraMatrix;
 	glm::mat4	m_projectionMatrix;
 
+	std::vector<Flag*> Flags;
+
+	ShaderHandle* Screen;
+
 	int RedSize, BlueSize;
 };
 
 #endif // __Bahaviour_tree_H_
+

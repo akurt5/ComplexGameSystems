@@ -347,7 +347,6 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, 
 
 	StartNode = a_Graph[0];
 
-	//																			sort list of nodes based on score
 
 	for (int i=0;i<a_Graph.size();++i)
 	{
