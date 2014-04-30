@@ -16,37 +16,42 @@ public:
 
 	NavMesh();
 	virtual ~NavMesh();
+	
+	struct NavNode
+	{
+		glm::vec3 Position, Vertices[3];
+		NavNode *edgeTarget[3], *Parent;
+		int Score;
+	};
+	
+	struct Compare
+	{
+		inline bool operator() (NavNode *_Node1, NavNode *_Node2)
+		{
+			return (_Node1->Score<_Node2->Score);
+		}
+	};
 
-protected:
+	struct GLData
+	{
+		unsigned int	vao, vbo, ibo;
+	};
+
 
 	virtual bool onCreate(int a_argc, char* a_argv[]);
 	virtual void onUpdate(float a_deltaTime);
 	virtual void onDraw();
 	virtual void onDestroy();
 
-	struct NavNode
-	{
-		glm::vec3 Position, Vertices[3];
-		NavNode *edgeTarget[3], *Parent;
-		int Score;
+	void	createOpenGLBuffers(FBXFile* a_fbx);
+	void	cleanupOpenGLBuffers(FBXFile* a_fbx);
 
-	};
-
+	void BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, glm::vec3 _StartPos, glm::vec3 _EndPos);
+	
 	std::vector <NavNode*> m_Graph, Open, Closed, PathList;
 
-struct Compare
-{
-	inline bool operator() (NavNode *_Node1, NavNode *_Node2)
-	{
-		return (_Node1->Score<_Node2->Score);
-	}
-
-
-};
-	//NavNode* GetCurrentNode(glm::vec3 _Pos, std::vector<NavNode*> &_List);
-	std::vector <NavNode*> Path(glm::vec3 _StartPos, glm::vec3 _TargetPos);
-	void Pathtest(int _counter);
-
+	NavNode* GiveScore(std::vector<NavNode*> a_Graph, glm::vec3 _Target);
+	
 	NavNode* ScoreCompare (NavNode *_NodeA, NavNode *_NodeB)
 	{
 		if(_NodeA == nullptr)
@@ -62,32 +67,9 @@ struct Compare
 			return _NodeB;
 	}
 
-	void BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, glm::vec3 _StartPos, glm::vec3 _EndPos);
+	std::vector <NavNode*> Path(glm::vec3 _StartPos, glm::vec3 _TargetPos);
 
-	void GiveSore(std::vector<NavNode*> a_Graph, glm::vec3 _Target)
-	{
-		for (int i=0;i<a_Graph.size();++i)
-		{
-			a_Graph[i]->Score = (glm::length(_Target) - glm::length(a_Graph[i]->Position));
-		
-			if(a_Graph[i]->Score < 0)
-			{
-				a_Graph[i]->Score *= -1;
-			}
-		}
-		std::vector<NavNode*> Temp;
-		Temp = a_Graph;
-		std::sort(Temp.begin(), Temp.end(), Compare());
-	}
-
-
-	void	createOpenGLBuffers(FBXFile* a_fbx);
-	void	cleanupOpenGLBuffers(FBXFile* a_fbx);
-
-	struct GLData
-	{
-		unsigned int	vao, vbo, ibo;
-	};
+	void Pathtest(int _counter);
 
 	FBXFile*	m_sponza;
 	FBXFile*	m_navMesh;

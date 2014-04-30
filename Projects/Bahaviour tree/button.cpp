@@ -62,28 +62,41 @@ void Button::Draw() {
 }
 
 bool Button::IsActivated(){
+
 	return bActivated;
 }
 
 void Button::Update() {
 
 	glm::dvec2 v2MousePosition;
-	glfwSetCursorPos(glfwGetCurrentContext(), v2MousePosition.x, v2MousePosition.y);
-	// GET MOUSE HERE USING ABOVE
+	glfwGetCursorPos(glfwGetCurrentContext(), &v2MousePosition.x, &v2MousePosition.y);
+	// GeT MOUSE HERE USING ABOVE
 
-	glm::vec2 p1 = (verts[0].position.xy);
-	glm::vec2 p2 = (verts[3].position.xy);
+	glm::vec2 p1 = (verts[3].position.xy);
+	glm::vec2 p2 = (verts[1].position.xy);
 
-	if (v2MousePosition.x > p1.x && 
-		v2MousePosition.y > p1.y && 
-		v2MousePosition.x < p2.x && 
-		v2MousePosition.y < p2.y ){
-			if(glfwGetMouseButton(glfwGetCurrentContext(), GLFW_MOUSE_BUTTON_1))
-			{
-				bActivated = true;
-			}
+	if(glfwGetMouseButton(glfwGetCurrentContext(), GLFW_MOUSE_BUTTON_1))
+	{
+		if (v2MousePosition.x > p1.x && 
+			v2MousePosition.y > p1.y && 
+			v2MousePosition.x < p2.x && 
+			v2MousePosition.y < p2.y )
+		{
+
+				if(!bsafe)
+				{
+					bActivated = true;
+					bsafe = true;
+				}
+				else
+				{
+					bActivated = false;
+
+				}
+		}
 
 	}else{
 		bActivated = false;
+		bsafe = false;
 	}
 }

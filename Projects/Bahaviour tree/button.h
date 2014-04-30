@@ -16,7 +16,7 @@ public:
 	bool IsActivated();
 protected:
 	sPosUV verts[4];
-	bool bActivated;
+	bool bActivated, bsafe;
 	unsigned int uiVAO, uiVBO, uiIBO;	
 
 };
