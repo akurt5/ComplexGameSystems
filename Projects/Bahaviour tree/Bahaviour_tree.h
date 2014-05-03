@@ -29,10 +29,13 @@ public:
 	Team *Red, *Blue;
 	glm::mat4	m_cameraMatrix;
 	glm::mat4	m_projectionMatrix;
+	glm::mat4	m_screenProjectionMatrix;
+	unsigned int uiRedUp, uiRedDown, uiBlueUp, uiBlueDown;
 
 	std::vector<Flag*> Flags;
 
 	ShaderHandle* Screen;
+	Button *bRedUp,*bRedDown, *bBlueUp, *bBlueDown;
 
 	int RedSize, BlueSize;
 };

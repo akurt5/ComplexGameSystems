@@ -158,6 +158,9 @@ void NavMesh::onDraw()
 
 	int location = glGetUniformLocation(m_shader, "projectionView");
 	glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr( m_projectionMatrix * viewMatrix ));
+
+
+
 	if (glfwGetKey(m_window, GLFW_KEY_SPACE))
 	{
 		unsigned int count = m_sponza->getMeshCount();
@@ -318,7 +321,7 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, 
 		}
 	}
 
-	//																			get rid of useless nodes / any nodes with the same position
+	
 	for(int i=0;i<a_Graph.size();i++)
 	{
 		for(int a=0;a<a_Graph.size();a++)
@@ -327,41 +330,18 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, 
 			{
 				if(i != a)
 				{
-					a_Graph.erase(a_Graph.erase(a_Graph.begin()+(i)));
+					a_Graph.erase(a_Graph.erase(a_Graph.begin()+(i)));//																			get rid of useless nodes / any nodes with the same position
 				}
 			}
+				//if((a_Graph[i]->edgeTarget[0] == nullptr)&&(a_Graph[i]->edgeTarget[1] == nullptr)&&(a_Graph[i]->edgeTarget[2] == nullptr))
+				//{
+					//a_Graph.erase(a_Graph.begin()+(i));//																			erase any nodes with no neighbours
+				//}
 		}
 	}
 
-	//																			Calculate score to a position (startnode) to find the node closest to the position.	
-	for (int i=0;i<a_Graph.size();++i)
-	{
-		a_Graph[i]->Score = (glm::length(_StartPos) - glm::length(a_Graph[i]->Position));
-		
-		if(a_Graph[i]->Score < 0)
-		{
-			a_Graph[i]->Score *= -1;
-		}
-	}
-	std::sort(a_Graph.begin(), a_Graph.end(), Compare());
-
-	StartNode = a_Graph[0];
-
-
-	for (int i=0;i<a_Graph.size();++i)
-	{
-		a_Graph[i]->Score = (glm::length(_EndPos) - glm::length(a_Graph[i]->Position));
-		
-		if(a_Graph[i]->Score < 0)
-		{
-			a_Graph[i]->Score *= -1;
-		}
-	}
-	//																			sort list of nodes based on score
-	std::sort(a_Graph.begin(), a_Graph.end(), Compare());
-	
-	//																			:. list[0] must be current node
-	EndNode = a_Graph[0];
+	StartNode = GiveScore(a_Graph, _StartPos);
+	EndNode = GiveScore(a_Graph, _EndPos);
 	CurrentNode = StartNode;
 	CurrentNode->Parent = nullptr;
 }
@@ -377,14 +357,14 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _Ta
 		{
 			if(CurrentNode->edgeTarget[i] != nullptr)
 			{
-				Gizmos::addTri(CurrentNode->edgeTarget[i]->Vertices[0], CurrentNode->edgeTarget[i]->Vertices[1], CurrentNode->edgeTarget[i]->Vertices[2], glm::vec4(1, 0, 0, 1));
+				/*Gizmos::addTri(CurrentNode->edgeTarget[i]->Vertices[0], CurrentNode->edgeTarget[i]->Vertices[1], CurrentNode->edgeTarget[i]->Vertices[2], glm::vec4(1, 0, 0, 1));
 
 				bool Allg = true;
 				for ( auto iterator : Closed)
 				{
 					if(Allg)
 					{
-						if((CurrentNode->edgeTarget[i]->Position != iterator->Position)&&(CurrentNode->edgeTarget[i] != iterator))
+						if((CurrentNode->edgeTarget[i]->Position != iterator->Position))//&&(CurrentNode->edgeTarget[i] != iterator))
 						{
 							Allg = true;
 						}
@@ -400,7 +380,7 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _Ta
 				{
 					if (Allg)
 					{
-						if((CurrentNode->edgeTarget[i]->Position != iterator->Position)&&(CurrentNode->edgeTarget[i] != iterator))
+						if((CurrentNode->edgeTarget[i]->Position != iterator->Position))//&&(CurrentNode->edgeTarget[i] != iterator))
 						{
 							Allg = true;
 						}
@@ -410,12 +390,12 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _Ta
 							break;
 						}
 					}
-				}
-				if (Allg)
-				{
+				}*/
+				//if (Allg)
+				//{
 					Open.emplace_back(CurrentNode->edgeTarget[i]);
 					CurrentNode->edgeTarget[i]->Parent = CurrentNode;
-				}
+				//}
 			}		
 		}
 		
@@ -427,11 +407,27 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _Ta
 				Closed.emplace_back(CurrentNode);
 			}
 		}
+		for(int i=0;i<Open.size()-1;i++)
+		{
+			for(int a=0;a<Open.size()-1;a++)
+			{
+				if(Open[i]->Position == Open[a]->Position)
+				{
+					if(i != a)
+					{
+						Open.erase(Open.begin()+(i));
+					}
+				}
+			}
+		}
 
 		Open.erase(Open.begin());
 
 		CurrentNode = ScoreCompare(CurrentNode->edgeTarget[0], ScoreCompare(CurrentNode->edgeTarget[1], CurrentNode->edgeTarget[2]));
-		Gizmos::addTri(Open[1]->Vertices[0], Open[1]->Vertices[1], Open[1]->Vertices[2], glm::vec4(0, 0, 1, 1));
+		if(Open.size() > 0)
+		{
+			Gizmos::addTri(Open[0]->Vertices[0], Open[0]->Vertices[1], Open[0]->Vertices[2], glm::vec4(0, 0, 1, 1));
+		}
 
 	}while(CurrentNode->Position != EndNode->Position);
 	//else
@@ -565,3 +561,26 @@ void NavMesh::Pathtest(int _counter)
 	std::cout<<_counter<<"  "<<m_Graph[_counter]<<'\n';
 	//																			system("cls");
 }
+
+NavMesh::NavNode* NavMesh::GiveScore(std::vector<NavNode*> a_Graph, glm::vec3 _Target)
+	{
+	//																			Calculate score to a position (startnode) to find the node closest to the position.	
+		for (int i=0;i<a_Graph.size();++i)
+		{
+			a_Graph[i]->Score = (glm::length(_Target) - glm::length(a_Graph[i]->Position));
+		
+			if(a_Graph[i]->Score < 0)
+			{
+				a_Graph[i]->Score *= -1;
+			}
+		}
+		std::vector<NavNode*> Temp;
+		Temp = a_Graph;
+		//																			sort list of nodes based on score
+
+		std::sort(Temp.begin(), Temp.end(), Compare());
+		//																			:. list[0] must be current node
+
+		return Temp[0];
+	}
+
