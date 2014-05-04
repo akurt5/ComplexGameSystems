@@ -25,7 +25,7 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 	Gizmos::create();
 
 	// create a world-space matrix for a camera
-	m_cameraMatrix = glm::inverse( glm::lookAt(glm::vec3(10,10,0),glm::vec3(0,0,0), glm::vec3(0,1,0)) );
+	m_cameraMatrix = glm::inverse( glm::lookAt(glm::vec3(20,20,0),glm::vec3(0,0,0), glm::vec3(0,1,0)) );
 	
 	// create a perspective projection matrix with a 90 degree field-of-view and widescreen aspect ratio
 	m_projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, DEFAULT_SCREENWIDTH/(float)DEFAULT_SCREENHEIGHT, 0.1f, 1000.0f);
@@ -54,6 +54,8 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 
 	
 	count = 0;
+	m_Graph.erase(m_Graph.begin(), m_Graph.begin()+2);
+	TestNode = m_Graph[60];	
 
 	return true;
 }
@@ -121,16 +123,17 @@ void NavMesh::onUpdate(float a_deltaTime)
 	{
 		count = 0;
 	}
-	//Pathtest(count);
-	Path(glm::vec3(2, 0, 2), glm::vec3(10, 0, 2));
+	Pathtest(count);
 
-	if(PathList.size()>0)
+	Path();
+
+	/*if(PathList.size()>0)
 	{
 		for(int i=0;i<PathList.size();++i)
 		{
 			Gizmos::addTri(PathList[i]->Vertices[0],PathList[i]->Vertices[1], PathList[i]->Vertices[2], glm::vec4(0, 0.2, 0, 1));
 		}
-	}
+	}*/
 
 	Gizmos::addTri(StartNode->Vertices[0],StartNode->Vertices[1], StartNode->Vertices[2], glm::vec4(0, 0.2, 0, 1));
 	Gizmos::addTri(EndNode->Vertices[0],EndNode->Vertices[1], EndNode->Vertices[2], glm::vec4(0.2, 0, 0, 1));
@@ -346,18 +349,85 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, 
 	CurrentNode->Parent = nullptr;
 }
 
-std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _TargetPos)
+std::vector <NavMesh::NavNode*> NavMesh::Path()
 {
-	Gizmos::addTri(CurrentNode->Vertices[0], CurrentNode->Vertices[1], CurrentNode->Vertices[2], glm::vec4(1, 1, 1, 1));
-	//if((CurrentNode->Position != EndNode->Position) && (PathList.size() < 1))
+	Gizmos::addTri(CurrentNode->Vertices[0], CurrentNode->Vertices[1], CurrentNode->Vertices[2], glm::vec4(0, 0, 0, 1));
+
+	for(auto Opens: Open)
+	{
+		Gizmos::addTri(Opens->Vertices[0], Opens->Vertices[1], Opens->Vertices[2], glm::vec4(0.2, 0, 0, 1));
+	}
+	for(auto Close: Closed)
+	{
+		Gizmos::addTri(Close->Vertices[0], Close->Vertices[1], Close->Vertices[2], glm::vec4(0.2, 0, 0, 1));
+	}
+
+	Open.emplace_back(CurrentNode);
+	Open.emplace_back(CurrentNode);
+	CurrentNode->Parent = nullptr;
+
 	do{
+		Closed.emplace_back(Open.front());
+		Open.erase(Open.begin());
+		std::sort( Open.begin(), Open.end(), Compare());
+		CurrentNode = Open.front();
+
+		for(int i=0;i<3;i++)
+		{
+			if(CurrentNode->edgeTarget[i] != nullptr)
+			{
+				int check =0;
+				for(int a=0;a<Open.size();a++)
+				{
+					if(CurrentNode->edgeTarget[i]->Position == Open[a]->Position)
+					{
+						check ++;
+					}
+				}
+				for(int a=0;a<Closed.size();a++)
+				{
+					if(CurrentNode->edgeTarget[i]->Position == Closed[a]->Position)
+					{
+						check ++;
+					}
+				}
+				if(check == 0)
+				{
+					Open.emplace_back(CurrentNode->edgeTarget[i]);
+					CurrentNode->edgeTarget[i]->Parent = CurrentNode;
+				}
+			}
+			
+		}
+
+		std::cout<<CurrentNode->Position.x<<'\n'<<EndNode->Position.x<<'\n'<<'\n'<<CurrentNode->Position.z<<'\n'<<EndNode->Position.z<<'\n'<<'\n'<<'\n'<<'\n';
+
+	}while((CurrentNode->Position.x != EndNode->Position.x)&&(CurrentNode->Position.z != EndNode->Position.z));
+
+	PathList.emplace_back(CurrentNode);
+
+	do{
+
+		PathList.emplace(PathList.begin(), CurrentNode->Parent);
+		CurrentNode = CurrentNode->Parent;
+
+	}while(CurrentNode->Parent != nullptr);
+
+	for(auto Path: PathList)
+	{
+		Gizmos::addTri(Path->Vertices[0], Path->Vertices[1], Path->Vertices[2], glm::vec4(0, 0, 0.2, 1));
+	}
+
+	return PathList;
+}
+/*do{
 		Open.emplace_back(CurrentNode);		
 
 		for(int i=0;i<3;i++)
 		{
 			if(CurrentNode->edgeTarget[i] != nullptr)
 			{
-				/*Gizmos::addTri(CurrentNode->edgeTarget[i]->Vertices[0], CurrentNode->edgeTarget[i]->Vertices[1], CurrentNode->edgeTarget[i]->Vertices[2], glm::vec4(1, 0, 0, 1));
+				Gizmos::addTri(CurrentNode->edgeTarget[i]->Vertices[0], CurrentNode->edgeTarget[i]->Vertices[1], CurrentNode->edgeTarget[i]->Vertices[2], glm::vec4(1, 0, 0, 1));
 
 				bool Allg = true;
 				for ( auto iterator : Closed)
@@ -390,7 +460,7 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _Ta
 							break;
 						}
 					}
-				}*/
+				}
 				//if (Allg)
 				//{
 					Open.emplace_back(CurrentNode->edgeTarget[i]);
@@ -439,10 +509,7 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _Ta
 			PathList.emplace(PathList.begin(), CurrentNode->Parent);
 			CurrentNode = CurrentNode->Parent;
 		}while((CurrentNode->Parent != nullptr) || (CurrentNode->Parent->Position != StartNode->Position));
-	//}
-
-	return PathList;
-}
+	//}*/
 /*{
 	printf("Path Start\n");
 
@@ -537,6 +604,8 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _Ta
 	
 void NavMesh::Pathtest(int _counter)
 {
+	static bool Press = false;
+	/*
 	Gizmos::addTri(glm::vec3(m_Graph[_counter]->Vertices[0].x, m_Graph[_counter]->Vertices[0].y + 0.5f, m_Graph[_counter]->Vertices[0].z), 
 				   glm::vec3(m_Graph[_counter]->Vertices[1].x, m_Graph[_counter]->Vertices[1].y + 0.5f, m_Graph[_counter]->Vertices[1].z), 
 				   glm::vec3(m_Graph[_counter]->Vertices[2].x, m_Graph[_counter]->Vertices[2].y + 0.5f, m_Graph[_counter]->Vertices[2].z), glm::vec4(0.5f, 0.5f, 0.5f, 1));
@@ -558,7 +627,27 @@ void NavMesh::Pathtest(int _counter)
 				       glm::vec3(m_Graph[_counter]->edgeTarget[2]->Vertices[1].x, m_Graph[_counter]->edgeTarget[2]->Vertices[1].y + 0.5f, m_Graph[_counter]->edgeTarget[2]->Vertices[1].z), 
 				       glm::vec3(m_Graph[_counter]->edgeTarget[2]->Vertices[2].x, m_Graph[_counter]->edgeTarget[2]->Vertices[2].y + 0.5f, m_Graph[_counter]->edgeTarget[2]->Vertices[2].z), glm::vec4(0, 0, 1, 0.5));
 	}
-	std::cout<<_counter<<"  "<<m_Graph[_counter]<<'\n';
+	*/
+	Gizmos::addTri(TestNode->Vertices[0], TestNode->Vertices[1],TestNode->Vertices[2], glm::vec4(1, 1, 1, 1));
+	if(TestNode->edgeTarget[0] != nullptr)
+	{
+		Gizmos::addTri(TestNode->edgeTarget[0]->Vertices[0], TestNode->edgeTarget[0]->Vertices[1], TestNode->edgeTarget[0]->Vertices[2], glm::vec4(1, 0, 0, 1));
+	}
+	if(TestNode->edgeTarget[1] != nullptr)
+	{
+		Gizmos::addTri(TestNode->edgeTarget[1]->Vertices[0], TestNode->edgeTarget[1]->Vertices[1], TestNode->edgeTarget[1]->Vertices[2], glm::vec4(0, 1, 0, 1));
+	}
+	if(TestNode->edgeTarget[2] != nullptr)
+	{
+		Gizmos::addTri(TestNode->edgeTarget[2]->Vertices[0], TestNode->edgeTarget[2]->Vertices[1], TestNode->edgeTarget[2]->Vertices[2], glm::vec4(0, 0, 1, 1));
+	}
+
+
+		if((glfwGetKey(m_window, GLFW_KEY_R))&&(TestNode->edgeTarget[0] != nullptr)&&(!Press)){TestNode = TestNode->edgeTarget[0];Press = true;printf("r", "\n");}
+		else if((glfwGetKey(m_window, GLFW_KEY_G))&&(TestNode->edgeTarget[1] != nullptr)&&(!Press)){TestNode = TestNode->edgeTarget[1];Press = true;printf("g", "\n");}
+		else if((glfwGetKey(m_window, GLFW_KEY_B))&&(TestNode->edgeTarget[2] != nullptr)&&(!Press)){TestNode = TestNode->edgeTarget[2];Press = true;printf("b", "\n");}
+		else if((!glfwGetKey(m_window, GLFW_KEY_R))&&(!glfwGetKey(m_window, GLFW_KEY_G))&&(!glfwGetKey(m_window, GLFW_KEY_B))&&(Press == true)) {Press = false;}
+	
 	//																			system("cls");
 }
 

@@ -67,7 +67,7 @@ public:
 			return _NodeB;
 	}
 
-	std::vector <NavNode*> Path(glm::vec3 _StartPos, glm::vec3 _TargetPos);
+	std::vector <NavNode*> Path();
 
 	void Pathtest(int _counter);
 
@@ -82,7 +82,7 @@ public:
 	int Start, End, count;
 	bool down;
 
-	NavNode *CurrentNode, *EndNode, *StartNode;
+	NavNode *CurrentNode, *EndNode, *StartNode, *TestNode;
 };
 
 #endif // __NavMesh_H_
