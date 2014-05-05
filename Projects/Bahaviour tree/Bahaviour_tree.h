@@ -6,6 +6,7 @@
 #include <vector>
 #include "button.h"
 #include "Shader_Class.h"
+#include <FBXFile.h>
 
 class Agent;
 class Team;
@@ -19,6 +20,11 @@ public:
 
 	Bahaviour_tree();
 	virtual ~Bahaviour_tree(){}
+
+	struct GLData
+	{
+		unsigned int	vao, vbo, ibo;
+	};
 
 	virtual bool onCreate(int a_argc, char* a_argv[]);
 	virtual void onUpdate(float a_deltaTime);
@@ -38,6 +44,7 @@ public:
 	Button *bRedUp,*bRedDown, *bBlueUp, *bBlueDown;
 
 	int RedSize, BlueSize;
+
 };
 
 #endif // __Bahaviour_tree_H_

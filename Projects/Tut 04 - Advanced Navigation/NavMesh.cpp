@@ -43,7 +43,7 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 	m_navMesh->load("../../Build/models/SponzaSimpleNavMesh.fbx", FBXFile::UNITS_CENTIMETER);
 //	createOpenGLBuffers(m_navMesh);
 
-	BuildNavMesh(m_navMesh->getMeshByIndex(0), m_Graph, glm::vec3(5,0,-6), glm::vec3(3,0,5));	
+	BuildNavMesh(m_navMesh->getMeshByIndex(0), m_Graph);	
 	
 
 	unsigned int vs = Utility::loadShader("../../Build/shaders/sponza.vert", GL_VERTEX_SHADER);
@@ -54,8 +54,9 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 
 	
 	count = 0;
-	m_Graph.erase(m_Graph.begin(), m_Graph.begin()+2);
+	
 	TestNode = m_Graph[60];	
+	Path(glm::vec3(-9,0,-3), glm::vec3(6,0,5));
 
 	return true;
 }
@@ -105,7 +106,6 @@ void NavMesh::onUpdate(float a_deltaTime)
 
 
 
-	//		Path(GetCurrentNode(glm::vec3(4, 0, 2)));
 	if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_1))
 	{
 		if (!down)
@@ -123,9 +123,9 @@ void NavMesh::onUpdate(float a_deltaTime)
 	{
 		count = 0;
 	}
-	Pathtest(count);
+	//Pathtest(count);
 
-	Path();
+	
 
 	/*if(PathList.size()>0)
 	{
@@ -136,7 +136,10 @@ void NavMesh::onUpdate(float a_deltaTime)
 	}*/
 
 	Gizmos::addTri(StartNode->Vertices[0],StartNode->Vertices[1], StartNode->Vertices[2], glm::vec4(0, 0.2, 0, 1));
+	Gizmos::addAABBFilled(glm::vec3(-9,0,-3), glm::vec3(0.5), glm::vec4(0, 0.2, 0, 0.1));
 	Gizmos::addTri(EndNode->Vertices[0],EndNode->Vertices[1], EndNode->Vertices[2], glm::vec4(0.2, 0, 0, 1));
+	Gizmos::addAABBFilled(glm::vec3(6,0,5), glm::vec3(0.5), glm::vec4(0.2, 0, 0, 0.1));
+
 
 }
 void NavMesh::onDraw() 
@@ -266,7 +269,7 @@ void NavMesh::cleanupOpenGLBuffers(FBXFile* a_fbx)
 
 	
 }
-void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, glm::vec3 _StartPos, glm::vec3 _EndPos)
+void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph)
 {
 
 	unsigned int tricount = a_Mesh->m_indices.size() / 3;
@@ -343,28 +346,33 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, 
 		}
 	}
 
-	StartNode = GiveScore(a_Graph, _StartPos);
-	EndNode = GiveScore(a_Graph, _EndPos);
-	CurrentNode = StartNode;
-	CurrentNode->Parent = nullptr;
+	for(int i=0;i<a_Graph.size();i++)//																			erase any node with no neighbours
+	{
+		int check = 0;
+		for(int a=0;a<3;a++)
+		{
+			if(a_Graph[i]->edgeTarget[a] == nullptr)
+			{
+				check ++;
+			}
+		}
+		if(check == 3)
+		{
+			a_Graph.erase(a_Graph.begin()+i);
+		}
+	}
 }
 
-std::vector <NavMesh::NavNode*> NavMesh::Path()
+std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _EndPos)
 {
-	Gizmos::addTri(CurrentNode->Vertices[0], CurrentNode->Vertices[1], CurrentNode->Vertices[2], glm::vec4(0, 0, 0, 1));
+	StartNode = GiveScore(m_Graph, _StartPos);
+	CurrentNode = GiveScore(m_Graph, _StartPos);
+	EndNode = GiveScore(m_Graph, _EndPos);
 
-	for(auto Opens: Open)
-	{
-		Gizmos::addTri(Opens->Vertices[0], Opens->Vertices[1], Opens->Vertices[2], glm::vec4(0.2, 0, 0, 1));
-	}
-	for(auto Close: Closed)
-	{
-		Gizmos::addTri(Close->Vertices[0], Close->Vertices[1], Close->Vertices[2], glm::vec4(0.2, 0, 0, 1));
-	}
-
-	Open.emplace_back(CurrentNode);
-	Open.emplace_back(CurrentNode);
 	CurrentNode->Parent = nullptr;
+
+	Open.emplace_back(CurrentNode);
+	Open.emplace_back(CurrentNode);
 
 	do{
 		Closed.emplace_back(Open.front());
@@ -400,207 +408,21 @@ std::vector <NavMesh::NavNode*> NavMesh::Path()
 			
 		}
 
-		std::cout<<CurrentNode->Position.x<<'\n'<<EndNode->Position.x<<'\n'<<'\n'<<CurrentNode->Position.z<<'\n'<<EndNode->Position.z<<'\n'<<'\n'<<'\n'<<'\n';
-
 	}while((CurrentNode->Position.x != EndNode->Position.x)&&(CurrentNode->Position.z != EndNode->Position.z));
-
-	PathList.emplace_back(CurrentNode);
+	
+	/*PathList.emplace_back(CurrentNode);
 
 	do{
 
 		PathList.emplace(PathList.begin(), CurrentNode->Parent);
 		CurrentNode = CurrentNode->Parent;
 
-	}while(CurrentNode->Parent != nullptr);
-
-	for(auto Path: PathList)
-	{
-		Gizmos::addTri(Path->Vertices[0], Path->Vertices[1], Path->Vertices[2], glm::vec4(0, 0, 0.2, 1));
-	}
+	}while((CurrentNode->Parent != nullptr)&&(CurrentNode != nullptr));*/
+	
 
 	return PathList;
 }
-/*do{
-		Open.emplace_back(CurrentNode);		
 
-		for(int i=0;i<3;i++)
-		{
-			if(CurrentNode->edgeTarget[i] != nullptr)
-			{
-				Gizmos::addTri(CurrentNode->edgeTarget[i]->Vertices[0], CurrentNode->edgeTarget[i]->Vertices[1], CurrentNode->edgeTarget[i]->Vertices[2], glm::vec4(1, 0, 0, 1));
-
-				bool Allg = true;
-				for ( auto iterator : Closed)
-				{
-					if(Allg)
-					{
-						if((CurrentNode->edgeTarget[i]->Position != iterator->Position))//&&(CurrentNode->edgeTarget[i] != iterator))
-						{
-							Allg = true;
-						}
-						else
-						{
-							Allg = false;
-							break;
-						}
-					}
-				}
-				if(Closed.size() == 0){Allg = true;}
-				for ( auto iterator : Open)
-				{
-					if (Allg)
-					{
-						if((CurrentNode->edgeTarget[i]->Position != iterator->Position))//&&(CurrentNode->edgeTarget[i] != iterator))
-						{
-							Allg = true;
-						}
-						else
-						{
-							Allg = false;
-							break;
-						}
-					}
-				}
-				//if (Allg)
-				//{
-					Open.emplace_back(CurrentNode->edgeTarget[i]);
-					CurrentNode->edgeTarget[i]->Parent = CurrentNode;
-				//}
-			}		
-		}
-		
-		//																			attempt at cleaning the closed list and preventing duplicates
-		for (auto Iterator : Closed )
-		{
-			if(Iterator->Position != CurrentNode->Position)
-			{
-				Closed.emplace_back(CurrentNode);
-			}
-		}
-		for(int i=0;i<Open.size()-1;i++)
-		{
-			for(int a=0;a<Open.size()-1;a++)
-			{
-				if(Open[i]->Position == Open[a]->Position)
-				{
-					if(i != a)
-					{
-						Open.erase(Open.begin()+(i));
-					}
-				}
-			}
-		}
-
-		Open.erase(Open.begin());
-
-		CurrentNode = ScoreCompare(CurrentNode->edgeTarget[0], ScoreCompare(CurrentNode->edgeTarget[1], CurrentNode->edgeTarget[2]));
-		if(Open.size() > 0)
-		{
-			Gizmos::addTri(Open[0]->Vertices[0], Open[0]->Vertices[1], Open[0]->Vertices[2], glm::vec4(0, 0, 1, 1));
-		}
-
-	}while(CurrentNode->Position != EndNode->Position);
-	//else
-	//{
-
-		PathList.emplace_back(CurrentNode);
-
-		do{
-			PathList.emplace(PathList.begin(), CurrentNode->Parent);
-			CurrentNode = CurrentNode->Parent;
-		}while((CurrentNode->Parent != nullptr) || (CurrentNode->Parent->Position != StartNode->Position));
-	//}*/
-/*{
-	printf("Path Start\n");
-
-	GetCurrentNode(_Startnode->Position);
-
-	//																			Start and End nodes are determined
-	//NavNode *Startnode = m_Graph[2];
-	NavNode *Endnode = m_Graph[5];
-	//																			CurrentNode is our iterator
-	NavNode *CurrentNode = m_Graph[30];//																			_Startnode; //										GetCurrent Node.
-
-	
-
-	//																			Startnode is added to open
-	std::vector<NavNode*> Open(1, CurrentNode);
-
-	//																			The Startnode is added to the closed list
-	std::vector<NavNode*> Closed;
-	printf("Path Top of first DO\n");
-
-	do{ 
-		Gizmos::addTri(CurrentNode->Vertices[0], CurrentNode->Vertices[1], CurrentNode->Vertices[2], glm::vec4(1, 0, 1, 1));
-		
-		//		   																	while we havent found the end chose the shortest path
-		//																			Adds current node to the back of the vector for easy access
-		//if (CurrentNode != Endnode)
-		//{
-			Closed.emplace_back(CurrentNode);
-		//}
-		//else
-		//	continue;//											good enough fo now
-		for (int i=0;i<3;++i)
-		{
-			if(CurrentNode->edgeTarget[i] != nullptr)
-			{
-				int check = 0;
-				for (int a=0;a<Closed.size();a++)
-				{
-					
-					if(CurrentNode->edgeTarget[i] != Closed[a])
-					{
-						check ++;
-					}
-					
-				}
-				if (check == Closed.size())
-				{
-					Open.push_back(CurrentNode->edgeTarget[i]);
-				}
-			}
-			else
-			{
-				std::cout<<"nullptr   "<<CurrentNode<<"\n";
-			}
-		}
-		//																			Set parent as back of closed list
-		CurrentNode->Parent = Closed.back();
-		if(Open.size() > 1)
-		{
-			Open.erase(Open.begin());
-		}
-		else
-		{
-			std::cout<<"";
-		}
-		//																			Determine which of the neighbouring nodes has the lowest score
-		//												Old Codes				CurrentNode = ScoreCompare(CurrentNode->edgeTarget[0], ScoreCompare(CurrentNode->edgeTarget[1], CurrentNode->edgeTarget[2]));
-		
-		//																			Sort Open based on score
-		std::sort(Open.begin(), Open.end(), Compare());
-		CurrentNode = Open[0];
-		
-
-
-		
-	}while(CurrentNode != Endnode);
-
-	//																			Create a vector to store the path
-	std::vector<NavNode*> PathList;
-	printf("Path Top of second DO\n");
-
-	do{
-		//																			Adds the parents of the path items in reverse order or something so the list is in the correct order
-		PathList.emplace(PathList.begin(), CurrentNode);
-		//																			current node becomes the parent to do the whole iteration thing
-		CurrentNode = CurrentNode->Parent;
-		//																			do all that until the path gets back to the start
-	}while(CurrentNode->Parent != _Startnode);
-	printf("Path End\n");
-	
-}*/
 	
 void NavMesh::Pathtest(int _counter)
 {
@@ -652,24 +474,27 @@ void NavMesh::Pathtest(int _counter)
 }
 
 NavMesh::NavNode* NavMesh::GiveScore(std::vector<NavNode*> a_Graph, glm::vec3 _Target)
-	{
+{
 	//																			Calculate score to a position (startnode) to find the node closest to the position.	
+		std::vector<NavNode*> Temp;
+		Temp = a_Graph;
 		for (int i=0;i<a_Graph.size();++i)
 		{
-			a_Graph[i]->Score = (glm::length(_Target) - glm::length(a_Graph[i]->Position));
+			glm::vec2 Pos = a_Graph[i]->Position.xz, Target = _Target.xz;
+			
+			a_Graph[i]->Score = glm::length(Target - Pos);
 		
 			if(a_Graph[i]->Score < 0)
 			{
 				a_Graph[i]->Score *= -1;
 			}
 		}
-		std::vector<NavNode*> Temp;
-		Temp = a_Graph;
+
 		//																			sort list of nodes based on score
 
 		std::sort(Temp.begin(), Temp.end(), Compare());
 		//																			:. list[0] must be current node
 
 		return Temp[0];
-	}
+}
 

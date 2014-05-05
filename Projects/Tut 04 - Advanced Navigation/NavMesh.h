@@ -21,14 +21,19 @@ public:
 	{
 		glm::vec3 Position, Vertices[3];
 		NavNode *edgeTarget[3], *Parent;
-		int Score;
+		float Score;
 	};
 	
 	struct Compare
 	{
 		inline bool operator() (NavNode *_Node1, NavNode *_Node2)
 		{
-			return (_Node1->Score<_Node2->Score);
+			NavNode *Temp1 = _Node1, *Temp2 = _Node2;
+			if(Temp1->Score < 0)
+			{
+				//Temp1->Score *= -1;
+			}
+			return (Temp1->Score<Temp2->Score);
 		}
 	};
 
@@ -46,9 +51,10 @@ public:
 	void	createOpenGLBuffers(FBXFile* a_fbx);
 	void	cleanupOpenGLBuffers(FBXFile* a_fbx);
 
-	void BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph, glm::vec3 _StartPos, glm::vec3 _EndPos);
-	
-	std::vector <NavNode*> m_Graph, Open, Closed, PathList;
+	void BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph);
+
+	std::vector <NavNode*> Path(glm::vec3 _StartPos, glm::vec3 _EndPos);
+	void Pathtest(int _counter);
 
 	NavNode* GiveScore(std::vector<NavNode*> a_Graph, glm::vec3 _Target);
 	
@@ -67,9 +73,7 @@ public:
 			return _NodeB;
 	}
 
-	std::vector <NavNode*> Path();
 
-	void Pathtest(int _counter);
 
 	FBXFile*	m_sponza;
 	FBXFile*	m_navMesh;
@@ -81,6 +85,9 @@ public:
 
 	int Start, End, count;
 	bool down;
+
+	std::vector <NavNode*> m_Graph, Open, Closed, PathList;
+
 
 	NavNode *CurrentNode, *EndNode, *StartNode, *TestNode;
 };
