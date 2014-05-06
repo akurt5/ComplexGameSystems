@@ -5,8 +5,16 @@
 #include "Application.h"
 #include <glm/glm.hpp>
 #include <iostream>
-
+#include "Agent.h"
+#include "Behaviour.h"
+#include "button.h"
+#include "Shader_Class.h"
 #include <FBXFile.h>
+
+class Agent;
+class Team;
+class Behaviour;
+class Flag;
 
 
 // Derived application class that wraps up all globals neatly
@@ -16,7 +24,8 @@ public:
 
 	NavMesh();
 	virtual ~NavMesh();
-	
+
+
 	struct NavNode
 	{
 		glm::vec3 Position, Vertices[3];
@@ -90,6 +99,18 @@ public:
 
 
 	NavNode *CurrentNode, *EndNode, *StartNode, *TestNode;
+
+	Behaviour *Agenda, *Agenda2;
+	Team *Red, *Blue;
+	glm::mat4	m_screenProjectionMatrix;
+	unsigned int uiRedUp, uiRedDown, uiBlueUp, uiBlueDown;
+
+	std::vector<Flag*> Flags;
+
+	ShaderHandle* Screen;
+	Button *bRedUp,*bRedDown, *bBlueUp, *bBlueDown;
+
+	int RedSize, BlueSize;
 };
 
 #endif // __NavMesh_H_

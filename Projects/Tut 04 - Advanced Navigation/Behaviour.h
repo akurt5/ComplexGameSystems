@@ -30,7 +30,7 @@ protected:
 };
 
 
-class Selector : public Composite
+class Selector : public Composite//																			OR
 {
 public:
 
@@ -47,7 +47,7 @@ public:
 		return false;
 	}
 };
-class Sequence : public Composite
+class Sequence : public Composite//																			AND
 {
 public:
 

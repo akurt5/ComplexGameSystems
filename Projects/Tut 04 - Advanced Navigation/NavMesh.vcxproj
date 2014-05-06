@@ -75,10 +75,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="button.cpp" />
     <ClCompile Include="NavMesh.cpp" />
+    <ClCompile Include="Shader_Class.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Agent.h" />
+    <ClInclude Include="Behaviour.h" />
+    <ClInclude Include="button.h" />
     <ClInclude Include="NavMesh.h" />
+    <ClInclude Include="Shader_Class.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Build\shaders\sponza.frag" />

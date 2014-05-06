@@ -403,25 +403,7 @@ void Bahaviour_tree::onDraw()
 	}
 
 
-	if (glfwGetKey(m_window, GLFW_KEY_SPACE))
-	{
-		unsigned int count = m_sponza->getMeshCount();
-		for (unsigned int i = 0 ; i < count ; ++i )
-		{
-			FBXMeshNode* mesh = m_sponza->getMeshByIndex(i);
-
-			GLData* data = (GLData*)mesh->m_userData;
-
-			location = glGetUniformLocation(sponzashader, "model");
-			glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr( mesh->m_globalTransform ));
-
-			location = glGetUniformLocation(m_shader, "invTransposeModel");
-			glUniformMatrix4fv(location, 1, GL_TRUE, glm::value_ptr( glm::inverse( mesh->m_globalTransform ) ));
-
-			glBindVertexArray(data->vao);
-			glDrawElements(GL_TRIANGLES, mesh->m_indices.size(), GL_UNSIGNED_INT, nullptr);
-		}
-	}
+	
 
 	// get the view matrix from the world-space camera matrix
 	glm::mat4 viewMatrix = glm::inverse( m_cameraMatrix );

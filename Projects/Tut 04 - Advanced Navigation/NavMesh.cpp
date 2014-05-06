@@ -11,6 +11,149 @@
 #define DEFAULT_SCREENWIDTH 1280
 #define DEFAULT_SCREENHEIGHT 720
 
+class WithinRange : public Behaviour
+{
+public:
+
+	WithinRange(float _Range) : Range2 (_Range*_Range){}
+	virtual ~WithinRange(){}
+	virtual bool Execute(Agent *_Agent)
+	{
+		float dist2 = 0;
+		if(_Agent->Attack)
+		{
+			Agent *TargetEnemy = nullptr;
+			for ( auto EnemyCurrent : _Agent->Enemies)
+			{
+				TargetEnemy = EnemyCurrent;
+				float Len = 0, tLen;
+				
+				tLen = glm::length(_Agent->GetPos()) - glm::length(EnemyCurrent->GetPos());
+				if(tLen < 0){tLen *= -1;}
+				if(tLen > Len){Len = tLen;TargetEnemy = EnemyCurrent;}
+			}
+			if(TargetEnemy != nullptr)
+				dist2 = glm::distance2(_Agent->GetPos(), TargetEnemy->GetPos());
+		}
+		else
+		{
+			dist2 = glm::distance2(_Agent->GetPos(), _Agent->GetTarget());
+		}
+		
+			if (dist2 < Range2)
+				return true;
+			return false;
+	}
+
+	float Range2;
+};
+class RandomiseTarget : public Behaviour
+{
+public:
+	RandomiseTarget(float _Radius) : Radius(_Radius){}
+	virtual ~RandomiseTarget(){}
+	virtual bool Execute(Agent *_Agent)
+	{
+		glm::vec3 Target(0);
+
+		Target.xz = glm::circularRand(Radius);
+		if(_Agent->Attack)
+		{
+			Agent *TargetEnemy = nullptr;
+			for ( auto EnemyCurrent : _Agent->Enemies)
+			{
+				float Len = 0, tLen;
+				
+				tLen = glm::length(_Agent->GetPos()) - glm::length(EnemyCurrent->GetPos());
+				if(tLen < 0){tLen *= -1;}
+				if(tLen > Len){Len = tLen;TargetEnemy = EnemyCurrent;}
+			}
+			if(TargetEnemy != nullptr)
+				TargetEnemy->SetPos(Target);
+		}
+		else
+		{
+			_Agent->SetTarget(Target);
+		}
+		return true;
+	}
+	float Radius;
+};
+class SeekTarget : public Behaviour
+{
+public:
+	SeekTarget(float _Speed) : Speed(_Speed){}
+	virtual ~SeekTarget(){}
+
+	virtual bool  Execute(Agent *_Agent)
+	{
+		glm::vec3 Pos, Dir(0);
+		if(_Agent->Attack)
+		{
+			Agent *TargetEnemy = nullptr;
+			for ( auto EnemyCurrent : _Agent->Enemies)
+			{
+				float Len = 0, tLen;
+				
+				tLen = glm::length(_Agent->GetPos()) - glm::length(EnemyCurrent->GetPos());
+				if(tLen < 0){tLen *= -1;}
+				if(tLen > Len){Len = tLen;TargetEnemy = EnemyCurrent;}
+			}
+			Pos = _Agent->GetPos();
+			if(TargetEnemy != nullptr)
+				//Dir = glm::normalize(TargetEnemy->GetPos() - Pos + TargetEnemy->Velocity);
+				
+		}
+		else
+		{
+				Pos = _Agent->GetPos();
+				Dir = glm::normalize(_Agent->GetTarget() - Pos);
+		}
+		_Agent->Velocity +=(Dir * Speed) * Utility::getDeltaTime();
+		
+		return true;
+	}
+	float Speed;
+};
+class FleeTarget : public Behaviour
+{
+public:
+	FleeTarget(float _Speed) : Speed(_Speed){}
+	virtual ~FleeTarget(){}
+
+	virtual bool  Execute(Agent *_Agent)
+	{
+		glm::vec3 Pos, Dir(0);
+		Agent *TargetEnemy = nullptr;
+		float Len = 0, tLen;
+		for ( auto EnemyCurrent : _Agent->Enemies)
+			{
+				tLen = glm::length(_Agent->GetPos()) - glm::length(EnemyCurrent->GetPos());
+				if(tLen < 0){tLen *= -1;}
+				if(tLen > Len){Len = tLen;TargetEnemy = EnemyCurrent;}
+			}
+		if(Len < 0.5)
+		{
+			
+				Pos = _Agent->GetPos();
+				if(TargetEnemy != nullptr)
+					Dir = glm::normalize(TargetEnemy->GetPos() - Pos);
+				_Agent->Velocity -=(Dir * Speed) * Utility::getDeltaTime();
+
+		
+		return true;
+		}
+		else 
+			return false;
+	}
+
+	float Speed;
+};
+
+
+#define DEFAULT_SCREENWIDTH 1280
+#define DEFAULT_SCREENHEIGHT 720
+
 NavMesh::NavMesh()
 {
 
@@ -58,6 +201,86 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 	TestNode = m_Graph[60];	
 	Path(glm::vec3(-9,0,-3), glm::vec3(6,0,5));
 
+	Screen = new ShaderHandle();
+	Screen->Load(2, "Screen.vert", "Screen.frag");
+
+	bBlueUp = new Button(glm::vec2(25 , 25), glm::vec2(50));
+	bBlueDown = new Button(glm::vec2(25, 100), glm::vec2(50));
+	bRedUp = new Button(glm::vec2(100, 25), glm::vec2(50));
+	bRedDown = new Button(glm::vec2(100 ,100), glm::vec2(50));
+
+	Behaviour* Seek = new SeekTarget(3);
+	Behaviour* Rand = new RandomiseTarget(10);
+	Behaviour* Within = new WithinRange(0.5f);
+	Behaviour* Flee = new FleeTarget(3);
+
+	//																			IF	not within range	THEN	seek	ELSE	randomise target
+	//																			IF	not attack			THEN	Above
+	
+	Sequence* Seq = new Sequence();
+	Seq->addchild(Within);
+	Seq->addchild(Rand);
+
+	Sequence* Seq2 = new Sequence();
+	Seq2->addchild(Flee);
+	Seq2->addchild(Seek);
+	Selector* Root = new Selector();
+	Root->addchild(Seq);
+	Root->addchild(Seek);
+	
+	Agenda = Root;
+
+	RedSize = 3;
+	BlueSize = 3;
+
+
+
+	Red = new Team();
+	Blue = new Team();
+
+	int FlagCount = 3;
+	for (int i=0;i<FlagCount;i++)
+	{
+		Flags.emplace_back(new Flag());
+
+	}
+	Flags[0]->Position = glm::vec3(9, 0, 9);
+	Flags[1]->Position = glm::vec3(0, 0, 0);
+	Flags[2]->Position = glm::vec3(-9, 0, -9);
+
+	for (int i=0;i<RedSize;++i)
+	{
+		Red->AddMember();
+		glm::vec3 NewPos;
+		NewPos.xz = glm::circularRand(10.0f);
+		Red->Members[i]->SetPos(NewPos);
+		
+				
+	}
+	for (int i=0;i<BlueSize;++i)
+	{
+		Blue->AddMember();
+		glm::vec3 NewPos;
+		NewPos.xz = glm::circularRand(10.0f);
+		Blue->Members[i]->SetPos(NewPos);
+		Blue->Members[i]->SetTarget(Flags[0]->GetPos());
+
+		
+		
+	}
+	for(int i=0;i<RedSize;++i)
+	{
+		Red->Members[i]->SetTarget(Flags[0]->GetPos());
+		Red->Members[i]->CalcEnemy(Blue->Members);
+		Red->Members[i]->SetBehaviour(Agenda);
+		
+	}
+	for (int i=0;i<BlueSize;++i)
+	{
+		Blue->Members[i]->SetBehaviour(Agenda);
+		Blue->Members[i]->CalcEnemy(Red->Members);
+	}
+
 	return true;
 }
 void NavMesh::onUpdate(float a_deltaTime) 
@@ -104,41 +327,81 @@ void NavMesh::onUpdate(float a_deltaTime)
 	if (glfwGetKey(m_window,GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		quit();
 
-
-
-	if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_1))
-	{
-		if (!down)
+	bBlueUp->Update();
+	if (bBlueUp->IsActivated()){
+		Blue->AddMember();
+		glm::vec3 NewPos;
+		NewPos.xz = glm::circularRand(10.0f);
+		Blue->Members.back()->SetPos(NewPos);
+		Blue->Members.back()->SetTarget(Flags[0]->GetPos());
+		Blue->Members.back()->SetBehaviour(Agenda);
+		Blue->Members.back()->CalcEnemy(Red->Members);
+	}
+	bBlueDown->Update();
+	if (bBlueDown->IsActivated()){
+		if(Blue->Members.size() <= 1)
 		{
-			count ++;
-			down = true;
+			Blue->DelMember();
 		}
 	}
-	else
-	{
-		down = false;
+	bRedUp->Update();
+	if (bRedUp->IsActivated()){
+		Red->AddMember();
+		glm::vec3 NewPos;
+		NewPos.xz = glm::circularRand(10.0f);
+		Red->Members.back()->SetPos(NewPos);
+		Red->Members.back()->SetTarget(Flags[0]->GetPos());
+		Red->Members.back()->SetBehaviour(Agenda);
+		Red->Members.back()->CalcEnemy(Blue->Members);
 	}
-
-	if (count == m_Graph.size()-1)
-	{
-		count = 0;
-	}
-	//Pathtest(count);
-
-	
-
-	/*if(PathList.size()>0)
-	{
-		for(int i=0;i<PathList.size();++i)
+	bRedDown->Update();
+	if (bRedDown->IsActivated()){
+		if(Red->Members.size() <= 1)
 		{
-			Gizmos::addTri(PathList[i]->Vertices[0],PathList[i]->Vertices[1], PathList[i]->Vertices[2], glm::vec4(0, 0.2, 0, 1));
+			Red->DelMember();
 		}
-	}*/
+	}
+
+	for (int i=0;i<Red->Members.size();++i)
+	{
+		Red->Members[i]->CalcEnemy(Blue->Members);
+		
+		Red->Members[i]->update(a_deltaTime);
+		Red->Members[i]->SetBehaviour(Agenda);
+
+		if(Red->Members[i]->Position.x < -10)	{Red->Members[i]->Position.x=-10;}
+		if(Red->Members[i]->Position.x > 10)	{Red->Members[i]->Position.x=10;}
+		if(Red->Members[i]->Position.y < -10)	{Red->Members[i]->Position.y=-10;}
+		if(Red->Members[i]->Position.y > 10)	{Red->Members[i]->Position.y=10;}
+
+		Gizmos::addAABBFilled(Red->Members[i]->GetPos(), glm::vec3(0.5f), glm::vec4(1, 0, 0, 1));
+
+	}
+	for (int i=0;i<Blue->Members.size();++i)
+	{
+		Blue->Members[i]->CalcEnemy(Red->Members);
+		
+		Blue->Members[i]->update(a_deltaTime);
+		Blue->Members[i]->SetBehaviour(Agenda);
+
+		if(Blue->Members[i]->Position.x < -10)	{Blue->Members[i]->Position.x=-10;}
+		if(Blue->Members[i]->Position.x > 10)	{Blue->Members[i]->Position.x=10;}
+		if(Blue->Members[i]->Position.y < -10)	{Blue->Members[i]->Position.y=-10;}
+		if(Blue->Members[i]->Position.y > 10)	{Blue->Members[i]->Position.y=10;}
+
+
+
+		Gizmos::addAABBFilled(Blue->Members[i]->GetPos(), glm::vec3(0.5f), glm::vec4(0, 0, 1, 1));
+
+	}
+
+	for (auto i : Flags)
+	{
+		i->Update();
+	}
 
 	Gizmos::addTri(StartNode->Vertices[0],StartNode->Vertices[1], StartNode->Vertices[2], glm::vec4(0, 0.2, 0, 1));
-	Gizmos::addAABBFilled(glm::vec3(-9,0,-3), glm::vec3(0.5), glm::vec4(0, 0.2, 0, 0.1));
 	Gizmos::addTri(EndNode->Vertices[0],EndNode->Vertices[1], EndNode->Vertices[2], glm::vec4(0.2, 0, 0, 1));
-	Gizmos::addAABBFilled(glm::vec3(6,0,5), glm::vec3(0.5), glm::vec4(0.2, 0, 0, 0.1));
 
 
 }
@@ -149,6 +412,37 @@ void NavMesh::onDraw()
 	
 	// get the view matrix from the world-space camera matrix
 	glm::mat4 viewMatrix = glm::inverse( m_cameraMatrix );
+
+	glUseProgram(Screen->m_shader);
+
+	int location = glGetUniformLocation(Screen->m_shader, "Projection");
+	glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr( m_screenProjectionMatrix));
+
+	{
+		GLint uDiffuseTexture1 = glGetUniformLocation(Screen->m_shader, "Texture");
+		glActiveTexture( GL_TEXTURE0 );
+		glBindTexture( GL_TEXTURE_2D, uiBlueUp );
+		glUniform1i( uDiffuseTexture1, 0 );
+		bBlueUp->Draw();
+
+		GLint uDiffuseTexture2 = glGetUniformLocation(Screen->m_shader, "Texture");
+		glActiveTexture( GL_TEXTURE0 );
+		glBindTexture( GL_TEXTURE_2D, uiBlueDown );
+		glUniform1i( uDiffuseTexture2, 0 );
+		bBlueDown->Draw();
+
+		GLint uDiffuseTexture3 = glGetUniformLocation(Screen->m_shader, "Texture");
+		glActiveTexture( GL_TEXTURE0 );
+		glBindTexture( GL_TEXTURE_2D, uiRedUp );
+		glUniform1i( uDiffuseTexture3, 0 );
+		bRedUp->Draw();
+
+		GLint uDiffuseTexture4 = glGetUniformLocation(Screen->m_shader, "Texture");
+		glActiveTexture( GL_TEXTURE0 );
+		glBindTexture( GL_TEXTURE_2D, uiRedDown );
+		glUniform1i( uDiffuseTexture4, 0 );
+		bRedDown->Draw();
+	}
 
 	glUseProgram(m_shader);
 
@@ -186,7 +480,7 @@ void NavMesh::onDraw()
 			glDrawElements(GL_TRIANGLES, mesh->m_indices.size(), GL_UNSIGNED_INT, nullptr);
 		}
 	}
-	
+
 	// draw the gizmos from this frame
 	Gizmos::draw(viewMatrix, m_projectionMatrix);
 }
@@ -339,10 +633,6 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph)
 					a_Graph.erase(a_Graph.erase(a_Graph.begin()+(i)));//																			get rid of useless nodes / any nodes with the same position
 				}
 			}
-				//if((a_Graph[i]->edgeTarget[0] == nullptr)&&(a_Graph[i]->edgeTarget[1] == nullptr)&&(a_Graph[i]->edgeTarget[2] == nullptr))
-				//{
-					//a_Graph.erase(a_Graph.begin()+(i));//																			erase any nodes with no neighbours
-				//}
 		}
 	}
 
@@ -410,14 +700,14 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _En
 
 	}while((CurrentNode->Position.x != EndNode->Position.x)&&(CurrentNode->Position.z != EndNode->Position.z));
 	
-	/*PathList.emplace_back(CurrentNode);
+	PathList.emplace_back(CurrentNode);
 
 	do{
 
 		PathList.emplace(PathList.begin(), CurrentNode->Parent);
 		CurrentNode = CurrentNode->Parent;
 
-	}while((CurrentNode->Parent != nullptr)&&(CurrentNode != nullptr));*/
+	}while((CurrentNode->Parent != nullptr)&&(CurrentNode != nullptr));
 	
 
 	return PathList;
