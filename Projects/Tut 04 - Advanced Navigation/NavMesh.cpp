@@ -82,7 +82,7 @@ public:
 class SeekTarget : public Behaviour
 {
 public:
-	SeekTarget(float _Speed) : Speed(_Speed){}
+	SeekTarget(float _Speed,NavMesh* _Path) : Speed(_Speed) , Path(_Path){}
 	virtual ~SeekTarget(){}
 
 	virtual bool  Execute(Agent *_Agent)
@@ -101,19 +101,39 @@ public:
 			}
 			Pos = _Agent->GetPos();
 			if(TargetEnemy != nullptr)
-				//Dir = glm::normalize(TargetEnemy->GetPos() - Pos + TargetEnemy->Velocity);
+			{
+				_Agent->Path = Path->Path(Pos,TargetEnemy->GetPos());
+			}
 				
 		}
 		else
 		{
-				Pos = _Agent->GetPos();
-				Dir = glm::normalize(_Agent->GetTarget() - Pos);
+				//																			Pos = _Agent->GetPos();
+				//																			Dir = glm::normalize(_Agent->GetTarget() - Pos);
+
+			//Check is path > 0
+			//If so, move towards first one
+			//If at first, remove first
+			
+				if(_Agent->Path.size() > 0)
+				{
+					_Agent->SetTarget(_Agent->Move(1.0f));
+					if(glm::length(_Agent->GetPos()) - glm::length(_Agent->Path[0]->Position)<1.0f)
+					{
+						_Agent->Path.erase(_Agent->Path.begin());
+					}
+				}
+				else
+				{
+					_Agent->Path = Path->Path(Pos,_Agent->GetTarget());
+				}
 		}
 		_Agent->Velocity +=(Dir * Speed) * Utility::getDeltaTime();
 		
 		return true;
 	}
 	float Speed;
+	NavMesh *Path;
 };
 class FleeTarget : public Behaviour
 {
@@ -146,7 +166,6 @@ public:
 		else 
 			return false;
 	}
-
 	float Speed;
 };
 
@@ -209,7 +228,7 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 	bRedUp = new Button(glm::vec2(100, 25), glm::vec2(50));
 	bRedDown = new Button(glm::vec2(100 ,100), glm::vec2(50));
 
-	Behaviour* Seek = new SeekTarget(3);
+	Behaviour* Seek = new SeekTarget(3,this);
 	Behaviour* Rand = new RandomiseTarget(10);
 	Behaviour* Within = new WithinRange(0.5f);
 	Behaviour* Flee = new FleeTarget(3);
@@ -252,7 +271,7 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 	{
 		Red->AddMember();
 		glm::vec3 NewPos;
-		NewPos.xz = glm::circularRand(10.0f);
+		NewPos.xz = glm::circularRand(20.0f);
 		Red->Members[i]->SetPos(NewPos);
 		
 				
@@ -261,7 +280,7 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 	{
 		Blue->AddMember();
 		glm::vec3 NewPos;
-		NewPos.xz = glm::circularRand(10.0f);
+		NewPos.xz = glm::circularRand(20.0f);
 		Blue->Members[i]->SetPos(NewPos);
 		Blue->Members[i]->SetTarget(Flags[0]->GetPos());
 
@@ -292,17 +311,7 @@ void NavMesh::onUpdate(float a_deltaTime)
 	Gizmos::clear();
 	
 	// add an identity matrix gizmo
-	Gizmos::addTransform( glm::mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1) );
-
-	// add a 20x20 grid on the Z-plane
-	for ( int i = 0 ; i < 21 ; ++i )
-	{
-		Gizmos::addLine( glm::vec3(-10 + i, 0, 10), glm::vec3(-10 + i, 0, -10), 
-						 i == 10 ? glm::vec4(1,1,1,1) : glm::vec4(0,0,0,1) );
-		
-		Gizmos::addLine( glm::vec3(10, 0, -10 + i), glm::vec3(-10, 0, -10 + i), 
-						 i == 10 ? glm::vec4(1,1,1,1) : glm::vec4(0,0,0,1) );
-	}
+	//Gizmos::addTransform( glm::mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1) );
 
 	
 	for (auto node : m_Graph)
@@ -369,10 +378,10 @@ void NavMesh::onUpdate(float a_deltaTime)
 		Red->Members[i]->update(a_deltaTime);
 		Red->Members[i]->SetBehaviour(Agenda);
 
-		if(Red->Members[i]->Position.x < -10)	{Red->Members[i]->Position.x=-10;}
-		if(Red->Members[i]->Position.x > 10)	{Red->Members[i]->Position.x=10;}
-		if(Red->Members[i]->Position.y < -10)	{Red->Members[i]->Position.y=-10;}
-		if(Red->Members[i]->Position.y > 10)	{Red->Members[i]->Position.y=10;}
+		if(Red->Members[i]->Position.x < -	20)	{Red->Members[i]->Position.x=-	20;}
+		if(Red->Members[i]->Position.x >	20)	{Red->Members[i]->Position.x=	20;}
+		if(Red->Members[i]->Position.y < -	20)	{Red->Members[i]->Position.y=-	20;}
+		if(Red->Members[i]->Position.y >	20)	{Red->Members[i]->Position.y=	20;}
 
 		Gizmos::addAABBFilled(Red->Members[i]->GetPos(), glm::vec3(0.5f), glm::vec4(1, 0, 0, 1));
 
@@ -456,7 +465,7 @@ void NavMesh::onDraw()
 			break;
 	}*/
 
-	int location = glGetUniformLocation(m_shader, "projectionView");
+	location = glGetUniformLocation(m_shader, "projectionView");
 	glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr( m_projectionMatrix * viewMatrix ));
 
 
@@ -653,7 +662,7 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph)
 	}
 }
 
-std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _EndPos)
+std::vector <NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _EndPos)
 {
 	StartNode = GiveScore(m_Graph, _StartPos);
 	CurrentNode = GiveScore(m_Graph, _StartPos);
@@ -663,7 +672,12 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _En
 
 	Open.emplace_back(CurrentNode);
 	Open.emplace_back(CurrentNode);
-
+	if((CurrentNode->Position.x != EndNode->Position.x)&&(CurrentNode->Position.z != EndNode->Position.z))
+	{
+		PathList.emplace_back(CurrentNode);
+		PathList.emplace_back(EndNode);
+		return PathList;
+	}
 	do{
 		Closed.emplace_back(Open.front());
 		Open.erase(Open.begin());
@@ -699,6 +713,7 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _En
 		}
 
 	}while((CurrentNode->Position.x != EndNode->Position.x)&&(CurrentNode->Position.z != EndNode->Position.z));
+
 	
 	PathList.emplace_back(CurrentNode);
 
@@ -717,29 +732,7 @@ std::vector <NavMesh::NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _En
 void NavMesh::Pathtest(int _counter)
 {
 	static bool Press = false;
-	/*
-	Gizmos::addTri(glm::vec3(m_Graph[_counter]->Vertices[0].x, m_Graph[_counter]->Vertices[0].y + 0.5f, m_Graph[_counter]->Vertices[0].z), 
-				   glm::vec3(m_Graph[_counter]->Vertices[1].x, m_Graph[_counter]->Vertices[1].y + 0.5f, m_Graph[_counter]->Vertices[1].z), 
-				   glm::vec3(m_Graph[_counter]->Vertices[2].x, m_Graph[_counter]->Vertices[2].y + 0.5f, m_Graph[_counter]->Vertices[2].z), glm::vec4(0.5f, 0.5f, 0.5f, 1));
-	if (m_Graph[_counter]->edgeTarget[0] != nullptr)
-	{
-		Gizmos::addTri(glm::vec3(m_Graph[_counter]->edgeTarget[0]->Vertices[0].x, m_Graph[_counter]->edgeTarget[0]->Vertices[0].y + 0.5f, m_Graph[_counter]->edgeTarget[0]->Vertices[0].z), 
-				       glm::vec3(m_Graph[_counter]->edgeTarget[0]->Vertices[1].x, m_Graph[_counter]->edgeTarget[0]->Vertices[1].y + 0.5f, m_Graph[_counter]->edgeTarget[0]->Vertices[1].z), 
-				       glm::vec3(m_Graph[_counter]->edgeTarget[0]->Vertices[2].x, m_Graph[_counter]->edgeTarget[0]->Vertices[2].y + 0.5f, m_Graph[_counter]->edgeTarget[0]->Vertices[2].z), glm::vec4(1, 0, 0, 0.5));
-	}
-	if (m_Graph[_counter]->edgeTarget[1] != nullptr)
-	{
-		Gizmos::addTri(glm::vec3(m_Graph[_counter]->edgeTarget[1]->Vertices[0].x, m_Graph[_counter]->edgeTarget[1]->Vertices[0].y + 0.5f, m_Graph[_counter]->edgeTarget[1]->Vertices[0].z), 
-				       glm::vec3(m_Graph[_counter]->edgeTarget[1]->Vertices[1].x, m_Graph[_counter]->edgeTarget[1]->Vertices[1].y + 0.5f, m_Graph[_counter]->edgeTarget[1]->Vertices[1].z), 
-				       glm::vec3(m_Graph[_counter]->edgeTarget[1]->Vertices[2].x, m_Graph[_counter]->edgeTarget[1]->Vertices[2].y + 0.5f, m_Graph[_counter]->edgeTarget[1]->Vertices[2].z), glm::vec4(0, 1, 0, 0.5));
-	}
-	if (m_Graph[_counter]->edgeTarget[2] != nullptr)
-	{
-		Gizmos::addTri(glm::vec3(m_Graph[_counter]->edgeTarget[2]->Vertices[0].x, m_Graph[_counter]->edgeTarget[2]->Vertices[0].y + 0.5f, m_Graph[_counter]->edgeTarget[2]->Vertices[0].z), 
-				       glm::vec3(m_Graph[_counter]->edgeTarget[2]->Vertices[1].x, m_Graph[_counter]->edgeTarget[2]->Vertices[1].y + 0.5f, m_Graph[_counter]->edgeTarget[2]->Vertices[1].z), 
-				       glm::vec3(m_Graph[_counter]->edgeTarget[2]->Vertices[2].x, m_Graph[_counter]->edgeTarget[2]->Vertices[2].y + 0.5f, m_Graph[_counter]->edgeTarget[2]->Vertices[2].z), glm::vec4(0, 0, 1, 0.5));
-	}
-	*/
+	
 	Gizmos::addTri(TestNode->Vertices[0], TestNode->Vertices[1],TestNode->Vertices[2], glm::vec4(1, 1, 1, 1));
 	if(TestNode->edgeTarget[0] != nullptr)
 	{
@@ -763,7 +756,7 @@ void NavMesh::Pathtest(int _counter)
 	//																			system("cls");
 }
 
-NavMesh::NavNode* NavMesh::GiveScore(std::vector<NavNode*> a_Graph, glm::vec3 _Target)
+NavNode* NavMesh::GiveScore(std::vector<NavNode*> a_Graph, glm::vec3 _Target)
 {
 	//																			Calculate score to a position (startnode) to find the node closest to the position.	
 		std::vector<NavNode*> Temp;

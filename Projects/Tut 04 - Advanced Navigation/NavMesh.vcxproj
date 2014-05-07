@@ -84,6 +84,7 @@
     <ClInclude Include="Behaviour.h" />
     <ClInclude Include="button.h" />
     <ClInclude Include="NavMesh.h" />
+    <ClInclude Include="NavNode.h" />
     <ClInclude Include="Shader_Class.h" />
   </ItemGroup>
   <ItemGroup>

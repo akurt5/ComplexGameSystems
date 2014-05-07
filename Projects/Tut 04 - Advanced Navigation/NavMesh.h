@@ -10,12 +10,13 @@
 #include "button.h"
 #include "Shader_Class.h"
 #include <FBXFile.h>
+#include "NavNode.h"
 
 class Agent;
 class Team;
 class Behaviour;
 class Flag;
-
+class NavMesh;
 
 // Derived application class that wraps up all globals neatly
 class NavMesh : public Application
@@ -26,12 +27,7 @@ public:
 	virtual ~NavMesh();
 
 
-	struct NavNode
-	{
-		glm::vec3 Position, Vertices[3];
-		NavNode *edgeTarget[3], *Parent;
-		float Score;
-	};
+	
 	
 	struct Compare
 	{
@@ -62,6 +58,7 @@ public:
 
 	void BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph);
 
+
 	std::vector <NavNode*> Path(glm::vec3 _StartPos, glm::vec3 _EndPos);
 	void Pathtest(int _counter);
 
@@ -81,8 +78,6 @@ public:
 		else 
 			return _NodeB;
 	}
-
-
 
 	FBXFile*	m_sponza;
 	FBXFile*	m_navMesh;

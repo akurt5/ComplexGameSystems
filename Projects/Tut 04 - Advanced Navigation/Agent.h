@@ -1,18 +1,13 @@
 #pragma once
 
 #include "Behaviour.h"
+
 #include <glm\glm.hpp>
 #include <glm\ext.hpp>
 #include <vector>
+#include "NavNode.h"
 
 
-struct NavNode
-	{
-		glm::vec3 Position, Vertices[3];
-		NavNode *edgeTarget[3], *Parent;
-		int Score;
-
-	};
 
 class Agent
 {
@@ -23,42 +18,41 @@ public:
 
 	const glm::vec3& GetPos () const {return Position;}
 
-
 	const glm::vec3 GetTarget () const{return Target;}
 	void CalcEnemy(std::vector <Agent*> _Team){Enemies = _Team;}
-	void SetPos (const glm::vec3& _Pos) { Position = _Pos;}
+	void SetPos (const glm::vec3& _Pos) { Velocity += _Pos;}
 	void SetTarget (glm::vec3 _Target) { Target = _Target;}
-	void Move(float t)
+	glm::vec3 Move(float t)
 	{
-		
-		glm::vec3 Dest = Path[1]->Position;
+		glm::vec3 Dest = GetTarget();
 		glm::vec3 Pos = Position;
 		if (Path.size() >= 2)
 		{
+			Dest = Path[1]->Position;
 			float t1 = 1-t;			
 			Dest = t1 * ((t1 * Position) + (t * Path[0]->Position)) + t * ((t1 * Path[0]->Position) + (t * Path[1]->Position));
 		}
 	
-			//	for now i will jut normalise there
+			//	for now i will just normalise there
 			//	Interpolate linearly to find the third vector // use a number greater than 1 as time // then spline
 		 
 		float m = glm::length(Dest);
 		Dest.x /= m;
 		Dest.y /= m;
 		Dest.z /= m;
-		Velocity += Dest;
+		return Dest;
 	}
 	void SetBehaviour(Behaviour* _Behaviour) {Behave = _Behaviour;}
 
-	virtual void update(float _DeltaTime)
+	void update(float _DeltaTime)
 	{
-		if(!Timer){Timer = 10000;int t = (rand()%2); Attack = (bool)t;}
+		if(!Timer){Timer = 1000; Attack =!Attack/*(rand()%2)*/;}
 		else{Timer--;}
 		Velocity = glm::vec3(0);
 		if (Behave != nullptr)
 			Behave->Execute(this);
 		
-		(Position += Velocity) * _DeltaTime;
+		Position += (Velocity * _DeltaTime);
 	}
 
 	Behaviour* Behave;

@@ -41,6 +41,9 @@
     <ClInclude Include="Shader_Class.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="NavNode.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Build\shaders\sponza.frag">
