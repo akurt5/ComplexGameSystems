@@ -103,19 +103,13 @@ public:
 			if(TargetEnemy != nullptr)
 			{
 				_Agent->Path = Path->Path(Pos,TargetEnemy->GetPos());
+				_Agent->SetTarget(_Agent->Move(1.0f));
 			}
 				
 		}
 		else
 		{
-				//																			Pos = _Agent->GetPos();
-				//																			Dir = glm::normalize(_Agent->GetTarget() - Pos);
-
-			//Check is path > 0
-			//If so, move towards first one
-			//If at first, remove first
-			
-				if(_Agent->Path.size() > 0)
+			if(_Agent->Path.size() > 0)
 				{
 					_Agent->SetTarget(_Agent->Move(1.0f));
 					if(glm::length(_Agent->GetPos()) - glm::length(_Agent->Path[0]->Position)<1.0f)
@@ -216,9 +210,6 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 
 	
 	count = 0;
-	
-	TestNode = m_Graph[60];	
-	Path(glm::vec3(-9,0,-3), glm::vec3(6,0,5));
 
 	Screen = new ShaderHandle();
 	Screen->Load(2, "Screen.vert", "Screen.frag");
@@ -263,16 +254,16 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 		Flags.emplace_back(new Flag());
 
 	}
-	Flags[0]->Position = glm::vec3(9, 0, 9);
+	Flags[0]->Position = glm::vec3(9, 0, 7);
 	Flags[1]->Position = glm::vec3(0, 0, 0);
-	Flags[2]->Position = glm::vec3(-9, 0, -9);
+	Flags[2]->Position = glm::vec3(-9, 0, -7);
 
 	for (int i=0;i<RedSize;++i)
 	{
 		Red->AddMember();
 		glm::vec3 NewPos;
 		NewPos.xz = glm::circularRand(20.0f);
-		Red->Members[i]->SetPos(NewPos);
+		Red->Members[i]->Position = NewPos;
 		
 				
 	}
@@ -281,7 +272,7 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 		Blue->AddMember();
 		glm::vec3 NewPos;
 		NewPos.xz = glm::circularRand(20.0f);
-		Blue->Members[i]->SetPos(NewPos);
+		Blue->Members[i]->Position = NewPos;
 		Blue->Members[i]->SetTarget(Flags[0]->GetPos());
 
 		
@@ -292,13 +283,22 @@ bool NavMesh::onCreate(int a_argc, char* a_argv[])
 		Red->Members[i]->SetTarget(Flags[0]->GetPos());
 		Red->Members[i]->CalcEnemy(Blue->Members);
 		Red->Members[i]->SetBehaviour(Agenda);
+		GiveScore(m_Graph, Red->Members[i]->Position);
+		Red->Members[i]->Position = m_Graph[0]->Position;
+
 		
 	}
 	for (int i=0;i<BlueSize;++i)
 	{
 		Blue->Members[i]->SetBehaviour(Agenda);
 		Blue->Members[i]->CalcEnemy(Red->Members);
+		GiveScore(m_Graph, Blue->Members[i]->Position);
+		Blue->Members[i]->Position = m_Graph[0]->Position;
+
 	}
+
+	TestNode = m_Graph[rand()%m_Graph.size()];	
+	Path(glm::vec3(-9,0,-3), glm::vec3(6,0,5));
 
 	return true;
 }
@@ -316,7 +316,7 @@ void NavMesh::onUpdate(float a_deltaTime)
 	
 	for (auto node : m_Graph)
 	{
-		Gizmos::addAABBFilled(node->Position, glm::vec3(0.05f), glm::vec4(1, 0, 0, 1));
+		Gizmos::addAABBFilled(node->Position, glm::vec3(0.005f), glm::vec4(1, 0, 0, 1));
 
 		if (node->edgeTarget[0] != nullptr)
 		{
@@ -385,6 +385,22 @@ void NavMesh::onUpdate(float a_deltaTime)
 
 		Gizmos::addAABBFilled(Red->Members[i]->GetPos(), glm::vec3(0.5f), glm::vec4(1, 0, 0, 1));
 
+		if(Red->Members[i]->Path.size() > 2)
+		{
+			glm::vec3 Pos1 = Red->Members[i]->Position, Pos2 = Red->Members[i]->Path[i]->Position;
+				Gizmos::addLine(Pos1, Pos2, glm::vec4(1, 0, 0, 1));
+				Gizmos::addAABBFilled(Pos2, glm::vec3(0.1), glm::vec4(1, 0.2, 0.2, 1));
+
+			for(int a=0;a>Red->Members[i]->Path.size()-1;a++)
+			{
+				Pos1 = Red->Members[i]->Path[a]->Position;
+				Pos1 = Red->Members[i]->Path[a+1]->Position;
+				Gizmos::addLine(Pos1, Pos2, glm::vec4(1, 0, 0, 1));
+				Gizmos::addAABBFilled(Pos2, glm::vec3(0.1), glm::vec4(1, 0.2, 0.2, 1));
+
+			}
+		}
+
 	}
 	for (int i=0;i<Blue->Members.size();++i)
 	{
@@ -402,6 +418,21 @@ void NavMesh::onUpdate(float a_deltaTime)
 
 		Gizmos::addAABBFilled(Blue->Members[i]->GetPos(), glm::vec3(0.5f), glm::vec4(0, 0, 1, 1));
 
+		if(Blue->Members[i]->Path.size() > 2)
+		{
+			glm::vec3 Pos1 = Blue->Members[i]->Position, Pos2 = Blue->Members[i]->Path[i]->Position;
+				Gizmos::addLine(Pos1, Pos2, glm::vec4(0, 0, 1, 1));
+				Gizmos::addAABBFilled(Pos2, glm::vec3(0.1), glm::vec4(0.2, 0.2, 1, 1));
+
+			for(int a=0;a>Blue->Members[i]->Path.size()-1;a++)
+			{
+				Pos1 = Blue->Members[i]->Path[a]->Position;
+				Pos1 = Blue->Members[i]->Path[a+1]->Position;
+				Gizmos::addLine(Pos1, Pos2, glm::vec4(0, 0, 1, 1));
+				Gizmos::addAABBFilled(Pos2, glm::vec3(0.1), glm::vec4(0.2, 0.2, 1, 1));
+
+			}
+		}
 	}
 
 	for (auto i : Flags)
@@ -455,15 +486,6 @@ void NavMesh::onDraw()
 
 	glUseProgram(m_shader);
 
-	/*Shader.send("NAME","m4x4",m4x4);
-
-	switch(type){
-	case "m4x4":
-
-		DO MATRIX CRAP
-
-			break;
-	}*/
 
 	location = glGetUniformLocation(m_shader, "projectionView");
 	glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr( m_projectionMatrix * viewMatrix ));
@@ -591,7 +613,10 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph)
 
 		node ->Position = (node->Vertices[0] + node->Vertices[1] + node->Vertices[2]) / 3.0f;
 
-		a_Graph.push_back(node);
+		if(node->Position.y < 1)
+		{
+			a_Graph.push_back(node);
+		}
 	}
 
 	for (auto start : a_Graph)
@@ -630,23 +655,20 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph)
 		}
 	}
 
-	
 	for(int i=0;i<a_Graph.size();i++)
 	{
 		for(int a=0;a<a_Graph.size();a++)
-	{
+		{
 			if(a_Graph[i]->Position == a_Graph[a]->Position)
 			{
 				if(i != a)
 				{
 					a_Graph.erase(a_Graph.erase(a_Graph.begin()+(i)));//																			get rid of useless nodes / any nodes with the same position
+					i = 0;
 				}
 			}
 		}
-	}
 
-	for(int i=0;i<a_Graph.size();i++)//																			erase any node with no neighbours
-	{
 		int check = 0;
 		for(int a=0;a<3;a++)
 		{
@@ -655,9 +677,10 @@ void NavMesh::BuildNavMesh(FBXMeshNode *a_Mesh, std::vector<NavNode*> &a_Graph)
 				check ++;
 			}
 		}
-		if(check == 3)
+		if((check == 3)||(a_Graph[i]->Position.y >1))
 		{
 			a_Graph.erase(a_Graph.begin()+i);
+			i=0;
 		}
 	}
 }
@@ -717,12 +740,12 @@ std::vector <NavNode*> NavMesh::Path(glm::vec3 _StartPos, glm::vec3 _EndPos)
 	
 	PathList.emplace_back(CurrentNode);
 
-	do{
+	while((CurrentNode->Parent != nullptr)&&(CurrentNode != nullptr)){
 
 		PathList.emplace(PathList.begin(), CurrentNode->Parent);
 		CurrentNode = CurrentNode->Parent;
 
-	}while((CurrentNode->Parent != nullptr)&&(CurrentNode != nullptr));
+	}
 	
 
 	return PathList;

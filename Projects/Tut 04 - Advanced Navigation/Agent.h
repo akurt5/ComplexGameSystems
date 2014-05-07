@@ -46,13 +46,14 @@ public:
 
 	void update(float _DeltaTime)
 	{
-		if(!Timer){Timer = 1000; Attack =!Attack/*(rand()%2)*/;}
+		if(!(bool)Timer){Timer = 1000; Attack =!Attack/*(bool)(rand()%2)*/;}
 		else{Timer--;}
-		Velocity = glm::vec3(0);
+		
 		if (Behave != nullptr)
 			Behave->Execute(this);
 		
 		Position += (Velocity * _DeltaTime);
+		Velocity = glm::vec3(0);
 	}
 
 	Behaviour* Behave;
