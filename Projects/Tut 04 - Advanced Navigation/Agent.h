@@ -1,13 +1,13 @@
 #pragma once
 
 #include "Behaviour.h"
-
+#include "Utilities.h"
 #include <glm\glm.hpp>
 #include <glm\ext.hpp>
 #include <vector>
 #include "NavNode.h"
 
-
+class Flag;
 
 class Agent
 {
@@ -46,7 +46,7 @@ public:
 
 	void update(float _DeltaTime)
 	{
-		if(!(bool)Timer){Timer = 1000; Attack =!Attack/*(bool)(rand()%2)*/;}
+		if(!(bool)Timer){Timer = 100000 * Utility::getDeltaTime(); Attack =!Attack/*(bool)(rand()%2)*/;}
 		else{Timer--;}
 		
 		if (Behave != nullptr)
@@ -57,8 +57,10 @@ public:
 	}
 
 	Behaviour* Behave;
-	std::vector<NavNode*> Path;
+	std::vector <NavNode*> Path;
 	std::vector <Agent*> Enemies;
+	std::vector <Flag*> Flags;
+
 	bool Attack;
 	int Timer;
 	glm::vec3 Position, Target, Velocity;
